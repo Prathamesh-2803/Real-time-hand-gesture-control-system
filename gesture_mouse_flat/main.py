@@ -1,26 +1,3 @@
-"""
-main.py — Gesture Mouse v3 entry point.
-Run:  python main.py
-
-CHANGES v3:
-- FULL SCREEN mapping: MARGIN_RATIO = 0 means zone covers entire frame
-  so you never need to move hand to the edge to reach screen corners.
-- pyautogui.PAUSE = 0 — zero latency on all mouse/keyboard calls
-- pyautogui.FAILSAFE = True — move cursor to top-left corner to kill
-- Mode hysteresis unchanged (stable, no flicker)
-- All gesture modules reset correctly on mode switch
-- FPS counter in title bar for diagnostics
-
-Gesture priority (highest → lowest):
-  inactive     hand below wrist level
-  screenshot   palm open + spread wide (hold)
-  zoom         hang-loose: thumb+pinky spread wide
-  volume       3-finger pinch + vertical move
-  scroll       index+middle close together + up
-  media        fist / peace / thumbs-up
-  cursor       only index up  ← DEFAULT
-"""
-
 import time
 import cv2
 import pyautogui
@@ -40,16 +17,12 @@ from gm_overlay    import (
 )
 from gm_logger import GestureLogger
 
-# ── pyautogui global settings ─────────────────────────────────────────────────
-pyautogui.FAILSAFE = True   # move to top-left corner to kill app
-pyautogui.PAUSE    = 0      # no built-in delay — we handle timing ourselves
+
+pyautogui.FAILSAFE = True
+pyautogui.PAUSE    = 0
 
 screen_w, screen_h = pyautogui.size()
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Mode determination
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _raw_mode(state):
     """Compute candidate mode from HandState. Hysteresis applied in main()."""
@@ -59,6 +32,7 @@ def _raw_mode(state):
         return "inactive"
     if state.palm_open and state.spread_all > config.SPREAD_THRESH:
         return "screenshot"
+    # Zoom: thumb + index only (zoom_shape gate already includes hysteresis)
     if state.zoom_shape:
         return "zoom"
     if state.volume_mode:
@@ -69,12 +43,8 @@ def _raw_mode(state):
         return "media"
     if state.cursor_mode:
         return "cursor"
-    return "cursor"   # default: any unrecognised shape → cursor
+    return "cursor"
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Main loop
-# ─────────────────────────────────────────────────────────────────────────────
 
 def main():
     cam     = Camera()
@@ -92,14 +62,12 @@ def main():
 
     logger = GestureLogger(config.LOG_FILE, enabled=config.LOG_GESTURES)
 
-    # Mode hysteresis state
     _candidate_mode   = "none"
     _candidate_frames = 0
     mode              = "none"
     prev_mode         = "none"
     hand_prev         = False
 
-    # FPS tracking
     _fps_t      = time.time()
     _fps_frames = 0
     _fps        = 0.0
@@ -107,8 +75,9 @@ def main():
     print("=" * 50)
     print("  Gesture Mouse v3")
     print("  Full-screen active zone")
-    print("  Point index finger → move cursor")
-    print("  Raise hand above wrist level → activate")
+    print("  Point index finger       → move cursor")
+    print("  Thumb+Index spread/close → zoom in/out")
+    print("  Raise hand above wrist   → activate")
     print("  Press Q to quit")
     print("=" * 50)
 
@@ -118,7 +87,6 @@ def main():
             print("[ERROR] Camera read failed — check CAMERA_INDEX in config.py")
             break
 
-        # ── FPS ───────────────────────────────────────────────────────────────
         _fps_frames += 1
         now = time.time()
         if now - _fps_t >= 1.0:
@@ -129,14 +97,12 @@ def main():
 
         fh, fw = frame.shape[:2]
 
-        # ── Active zone — full frame when MARGIN_RATIO = 0 ───────────────────
         mx  = int(fw * config.MARGIN_RATIO)
         my  = int(fh * config.MARGIN_RATIO)
         zx0, zx1 = mx, fw - mx
         zy0 = my
         zy1 = fh - int(fh * config.BOTTOM_BIAS)
 
-        # Only draw zone border if there's actually a margin
         if config.MARGIN_RATIO > 0.01 or config.BOTTOM_BIAS > 0.01:
             draw_zone(frame, zx0, zy0, zx1, zy1)
 
@@ -145,7 +111,6 @@ def main():
         state   = tracker.process(frame, zx0, zx1, zy0, zy1)
         overlay = []
 
-        # ── Mode hysteresis ───────────────────────────────────────────────────
         raw = _raw_mode(state)
         if raw == _candidate_mode:
             _candidate_frames += 1
@@ -153,18 +118,15 @@ def main():
             _candidate_mode   = raw
             _candidate_frames = 1
 
-        # "none" and "inactive" switch instantly; others need N stable frames
         if raw in ("none", "inactive") or \
                 _candidate_frames >= config.MODE_HYSTERESIS_FRAMES:
             mode = raw
 
-        # ── Per-frame logic ───────────────────────────────────────────────────
         if state.present:
             draw_fingertips(frame, state, mode)
 
             if mode != prev_mode:
                 logger.log(mode, f"prev={prev_mode}")
-                # Reset whichever gesture is losing focus
                 _reset_map = {
                     "cursor":     cursor_g,
                     "scroll":     scroll_g,
@@ -191,7 +153,6 @@ def main():
                 overlay += media_g.update(      state, tracker.last_landmarks,
                                                 mode == "media")
 
-                # ── Progress bars ─────────────────────────────────────────────
                 if mode == "screenshot":
                     draw_gesture_progress_bar(
                         frame, screenshot_g._hold,
@@ -218,7 +179,6 @@ def main():
             hand_prev = True
 
         else:
-            # Hand lost
             if hand_prev:
                 for g in all_gestures:
                     g.reset()
@@ -230,7 +190,6 @@ def main():
             prev_mode         = "none"
             draw_mode_badge(frame, "none")
 
-        # ── FPS display (bottom-right) ─────────────────────────────────────────
         cv2.putText(frame, f"{_fps:.0f} fps",
                     (fw - 80, fh - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (100, 100, 100), 1,
@@ -243,7 +202,6 @@ def main():
         if key == ord('q') or key == ord('Q'):
             break
 
-    # ── Cleanup ───────────────────────────────────────────────────────────────
     try:
         pyautogui.mouseUp(button="left")
     except Exception:

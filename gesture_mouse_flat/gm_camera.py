@@ -1,5 +1,3 @@
-"""gm_camera.py — Camera init and frame capture."""
-
 import cv2
 import config
 

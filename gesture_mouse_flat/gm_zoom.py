@@ -1,13 +1,12 @@
 """
-gm_zoom.py — Hang-loose shape (thumb+pinky out, rest curled) → Ctrl+/-/0.
+Zoom gesture — Thumb + Index finger only (all other fingers curled).
 
-IMPROVEMENTS v2:
-- Delta smoothed over a short window (3-frame mean) to prevent single-
-  frame jitter from triggering false zoom steps.
-- Configurable delta threshold from config.ZOOM_DELTA_THRESH.
-- Ctrl+0 (reset zoom) fired on a fast spread-then-close or close-then-
-  spread (a "snap" gesture) — optional quality-of-life feature.
-- Overlay shows current spread and direction indicator.
+  Spread thumb & index apart  →  Zoom IN  (Ctrl +)
+  Bring thumb & index closer  →  Zoom OUT (Ctrl -)
+
+The distance between landmark 4 (thumb tip) and landmark 8 (index tip)
+is used directly.  A rolling history buffer smooths jitter so the
+direction is stable before a key-press fires.
 """
 
 import pyautogui
@@ -17,60 +16,77 @@ import config
 
 class ZoomGesture:
     def __init__(self):
-        self._active      = False
-        self._prev_dist   = 0.0
-        self._cooldown    = 0
-        self._dist_hist   = deque(maxlen=3)   # for delta smoothing
+        self._active    = False
+        self._cooldown  = 0
+        self._dist_hist = deque(maxlen=getattr(config, 'ZOOM_HIST_LEN', 4))
 
+    # ------------------------------------------------------------------
     def update(self, state, active):
         overlay = []
+
         if not active:
-            self._active    = False
-            self._dist_hist.clear()
+            self._reset_state()
             return overlay
 
         if self._cooldown > 0:
             self._cooldown -= 1
 
+        dist = state.zoom_dist   # thumb-tip ↔ index-tip, normalised 0-1
+
+        # Sanity-check: ignore clearly out-of-range values
+        max_dist = getattr(config, 'ZOOM_SHAPE_MAX_DIST', 0.45)
+        if dist > max_dist:
+            self._reset_state()
+            return overlay
+
         if not self._active:
-            self._active  = True
-            self._prev_dist = state.thumb_pinky
+            # First frame entering zoom mode — seed history, don't fire yet
+            self._active = True
             self._dist_hist.clear()
-            self._dist_hist.append(state.thumb_pinky)
+            self._dist_hist.append(dist)
+            overlay.append((f"Zoom ready  d={dist:.3f}", (100, 220, 255)))
             return overlay
 
-        # Keep a short history for smoothed delta
-        self._dist_hist.append(state.thumb_pinky)
+        self._dist_hist.append(dist)
 
+        # Need at least 2 samples to compute a direction
         if len(self._dist_hist) < 2:
+            overlay.append((f"Zoom  d={dist:.3f}", (100, 220, 255)))
             return overlay
 
-        # Smoothed delta over history window
+        # Compare smoothed oldest vs newest in the window
         oldest = self._dist_hist[0]
         newest = self._dist_hist[-1]
-        delta  = newest - oldest   # positive = spread growing = zoom in
+        delta  = newest - oldest   # positive → spreading → zoom in
 
-        thresh = config.ZOOM_DELTA_THRESH
+        thresh = getattr(config, 'ZOOM_DELTA_THRESH', 0.018)
 
         if self._cooldown == 0:
             if delta > thresh:
                 pyautogui.hotkey('ctrl', '+')
                 overlay.append(("ZOOM IN  ▲", (0, 220, 255)))
                 self._cooldown = config.ZOOM_COOLDOWN
+
             elif delta < -thresh:
                 pyautogui.hotkey('ctrl', '-')
                 overlay.append(("ZOOM OUT ▼", (255, 160, 0)))
                 self._cooldown = config.ZOOM_COOLDOWN
 
-        self._prev_dist = state.thumb_pinky
+        # Direction hint for the HUD
+        if delta > 0.006:
+            direction = "→ spreading (IN)"
+        elif delta < -0.006:
+            direction = "→ closing (OUT)"
+        else:
+            direction = "→ stable"
 
-        direction = "→ IN" if delta > 0.005 else ("→ OUT" if delta < -0.005 else "")
-        overlay.append((
-            f"Zoom spread={state.thumb_pinky:.3f}  {direction}",
-            (100, 220, 255)
-        ))
+        overlay.append((f"Zoom d={dist:.3f}  {direction}", (100, 220, 255)))
         return overlay
 
+    # ------------------------------------------------------------------
     def reset(self):
-        self._active    = False
+        self._reset_state()
+
+    def _reset_state(self):
+        self._active = False
         self._dist_hist.clear()

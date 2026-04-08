@@ -1,22 +1,9 @@
-"""
-gm_media.py — Media controls: fist=play/pause, peace=next, thumbs=prev.
-
-IMPROVEMENTS v2:
-- Peace and thumbs-up gestures now require a minimum hold of 3 frames
-  before firing (prevents single-frame MediaPipe blips from skipping tracks).
-- Fist detection (fingers_curled) now cross-checked with state flag from
-  tracker (which uses the robust tip-above-MCP-and-PIP method).
-- Added a minimum re-trigger lockout (MEDIA_LOCKOUT_FRAMES) after each
-  media action so rapid jitter can't spam track changes.
-"""
-
 import pyautogui
 import config
 
 
-# ── Minimum hold frames for peace/thumbs to fire ─────────────────────────────
 HOLD_REQUIRED = 3
-MEDIA_LOCKOUT = 30   # frames after any media action before next allowed
+MEDIA_LOCKOUT = 30   
 
 
 def _is_peace(lm):
@@ -44,7 +31,7 @@ class MediaGesture:
         self._thumb_frames = 0
         self._thumb_fired  = False
 
-        self._lockout      = 0   # global cooldown after any media action
+        self._lockout      = 0  
 
     def update(self, state, raw_lm, active):
         overlay = []
@@ -56,7 +43,7 @@ class MediaGesture:
             self._reset()
             return overlay
 
-        # ── Play / Pause — fist hold ──────────────────────────────────────────
+
         if state.fingers_curled:
             self._fist_frames += 1
             if (self._fist_frames >= config.FIST_HOLD_FRAMES
@@ -69,7 +56,7 @@ class MediaGesture:
             self._fist_frames = 0
             self._fist_fired  = False
 
-        # ── Next track — peace sign (hold 3 frames) ───────────────────────────
+       
         if _is_peace(raw_lm):
             self._peace_frames += 1
             if (self._peace_frames >= HOLD_REQUIRED
@@ -82,7 +69,7 @@ class MediaGesture:
             self._peace_frames = 0
             self._peace_fired  = False
 
-        # ── Prev track — thumbs-up (hold 3 frames) ────────────────────────────
+       
         if _is_thumbs_up(raw_lm):
             self._thumb_frames += 1
             if (self._thumb_frames >= HOLD_REQUIRED
@@ -107,4 +94,3 @@ class MediaGesture:
         self._peace_fired  = False
         self._thumb_frames = 0
         self._thumb_fired  = False
-        # Do NOT reset lockout — let it drain naturally

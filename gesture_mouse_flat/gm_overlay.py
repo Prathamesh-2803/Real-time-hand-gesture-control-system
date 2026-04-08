@@ -1,13 +1,3 @@
-"""
-gm_overlay.py — All OpenCV drawing: HUD, badges, progress bars, fingertips.
-
-CHANGES v3:
-- REMOVED the line drawn between thumb and index tip (no more weird line)
-- draw_fingertips: cleaner dot display, index tip pulses in cursor mode
-- draw_pinch_indicator: shows a subtle arc-distance text only, no line
-- All other drawing unchanged
-"""
-
 import cv2
 import config
 
@@ -19,7 +9,7 @@ HUD_LINES = [
     " Long pinch + move     →  Drag",
     " Index+Middle close    →  Scroll (velocity)",
     " 3-finger pinch+move   →  Volume ±",
-    " Thumb+Pinky spread    →  Zoom in/out",
+    " Thumb+Index spread↔   →  Zoom in / out",
     " Fist hold             →  Play / Pause",
     " Peace sign  (3f hold) →  Next track",
     " Thumbs-up   (3f hold) →  Prev track",
@@ -72,8 +62,6 @@ def draw_hud(frame):
 
 
 def draw_zone(frame, x0, y0, x1, y1):
-    """Draw the active zone border — now effectively full frame."""
-    # Only draw if there's actually a meaningful margin (skip if full screen)
     if x0 > 2 or y0 > 2:
         cv2.rectangle(frame, (x0, y0), (x1, y1), (100, 100, 100), 1)
 
@@ -81,45 +69,45 @@ def draw_zone(frame, x0, y0, x1, y1):
 def draw_fingertips(frame, state, mode="cursor"):
     """
     Draw coloured dots on each fingertip.
-    NO line between thumb and index — removed in v3.
-    Index tip pulses larger when cursor mode is active.
+    In zoom mode, draw a line between thumb and index to show the distance.
     """
     if not state.present:
         return
 
-    # Index tip — larger when cursor mode (shows it's the control point)
     idx_r = 20 if mode == "cursor" else 12
     cv2.circle(frame, (state.r8x, state.r8y), idx_r,
                TIP_COLORS["index"], cv2.FILLED)
     cv2.circle(frame, (state.r8x, state.r8y), idx_r + 2,
                (255, 255, 255), 1)
 
-    # Thumb tip
     cv2.circle(frame, (state.r4x,  state.r4y),  16,
                TIP_COLORS["thumb"],  cv2.FILLED)
 
-    # Middle tip
     cv2.circle(frame, (state.r12x, state.r12y), 11,
                TIP_COLORS["middle"], cv2.FILLED)
 
-    # Ring tip
     cv2.circle(frame, (state.r16x, state.r16y), 9,
                TIP_COLORS["ring"],   cv2.FILLED)
 
-    # Pinky tip
     cv2.circle(frame, (state.r20x, state.r20y), 9,
                TIP_COLORS["pinky"],  cv2.FILLED)
 
-    # ── Pinch proximity indicator ────────────────────────────────────────────
-    # Instead of a line, show a small filled circle between thumb+index
-    # that grows red as they approach (much cleaner visually)
-    t = max(0.0, min(1.0, 1.0 - state.pinch_2f / 0.10))
-    if t > 0.3:
-        mid_x = (state.r4x + state.r8x) // 2
-        mid_y = (state.r4y + state.r8y) // 2
-        r     = max(3, int(t * 12))
-        color = (int(t * 30), int((1 - t) * 220), int((1 - t) * 255))
-        cv2.circle(frame, (mid_x, mid_y), r, color, cv2.FILLED)
+    # Pinch indicator (cursor mode)
+    if mode != "zoom":
+        t = max(0.0, min(1.0, 1.0 - state.pinch_2f / 0.10))
+        if t > 0.3:
+            mid_x = (state.r4x + state.r8x) // 2
+            mid_y = (state.r4y + state.r8y) // 2
+            r     = max(3, int(t * 12))
+            color = (int(t * 30), int((1 - t) * 220), int((1 - t) * 255))
+            cv2.circle(frame, (mid_x, mid_y), r, color, cv2.FILLED)
+
+    # Zoom mode: just show the distance value near the index tip, no line
+    if mode == "zoom":
+        cv2.putText(frame, f"d={state.zoom_dist:.2f}",
+                    (state.r8x + 8, state.r8y - 8),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 220, 255), 1,
+                    cv2.LINE_AA)
 
 
 def draw_overlay(frame, overlay_text):

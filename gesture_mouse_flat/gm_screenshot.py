@@ -1,14 +1,3 @@
-"""
-gm_screenshot.py — Hold open palm spread wide → screenshot.
-
-IMPROVEMENTS v2:
-- Countdown shows remaining seconds (using CAMERA_FPS) rather than
-  arbitrary frame count, so the UI makes sense to users.
-- Screenshot saved in a dedicated screenshots/ sub-folder (auto-created).
-- Cooldown after firing so one long palm-hold doesn't spam screenshots.
-- Visual flash effect: overlay turns bright green for 10 frames on fire.
-"""
-
 import time
 import math
 import pyautogui
@@ -17,7 +6,7 @@ from pathlib import Path
 
 
 _SS_DIR     = Path("screenshots")
-_FLASH_FRAMES = 10   # frames to show "Saved!" message
+_FLASH_FRAMES = 10   
 
 
 class ScreenshotGesture:
@@ -31,7 +20,7 @@ class ScreenshotGesture:
     def update(self, state, active):
         overlay = []
 
-        # Flash countdown after screenshot
+       
         if self._flash > 0:
             self._flash -= 1
             overlay.append((f"✓ Saved: {self._last_file}", (120, 255, 80)))
@@ -44,7 +33,7 @@ class ScreenshotGesture:
         if state.spread_all > config.SPREAD_THRESH:
             self._hold += 1
 
-            # Show remaining time in seconds
+         
             frames_left  = config.SPREAD_HOLD_FRAMES - self._hold
             secs_left    = math.ceil(frames_left / max(config.CAMERA_FPS, 1))
             overlay.append((
@@ -61,12 +50,11 @@ class ScreenshotGesture:
                 self._flash     = _FLASH_FRAMES
                 overlay.append((f"✓ Saved: {fname}", (120, 255, 80)))
         else:
-            # Reset if spread drops (but keep _fired True until re-entry,
-            # so releasing and re-spreading doesn't retrigger immediately)
+          
             if not self._fired:
                 self._hold = 0
             else:
-                # Allow re-trigger after fully releasing
+             
                 if self._hold > 0 and state.spread_all < config.SPREAD_THRESH * 0.7:
                     self._hold  = 0
                     self._fired = False

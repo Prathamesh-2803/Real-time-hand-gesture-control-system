@@ -1,13 +1,3 @@
-"""
-gm_helpers.py — Math helpers, coordinate mapping, adaptive smoothing.
-
-CHANGES v3:
-- OneEuroFilter now reads CURSOR_OEF_* params from config for easy tuning
-- Added seed_from_cursor() consistency across all filter types
-- HysteresisCounter unchanged but documented better
-- All helpers tested for correctness
-"""
-
 import math
 import numpy as np
 from collections import deque
@@ -15,9 +5,7 @@ import pyautogui
 import config
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Basic geometry
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 def dist2d(x1, y1, x2, y2):
     return float(math.hypot(x2 - x1, y2 - y1))
@@ -42,10 +30,7 @@ def landmark_to_screen(lm, frame_w, frame_h, zx0, zx1, zy0, zy1, sw, sh):
     return rx, ry, sx, sy
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# One-Euro Filter — the gold standard for pointer smoothing
-# Reference: https://cristal.univ-lille.fr/~casiez/1euro/
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 class OneEuroFilter:
     """
@@ -79,14 +64,14 @@ class OneEuroFilter:
             self._x_prev, self._y_prev = float(x), float(y)
             return int(x), int(y)
 
-        # Smoothed derivative
+    
         dx   = (x - self._x_prev) * self.freq
         dy   = (y - self._y_prev) * self.freq
         da   = self._alpha(self.d_cutoff)
         self._dx = da * dx + (1.0 - da) * self._dx
         self._dy = da * dy + (1.0 - da) * self._dy
 
-        # Speed-adaptive cutoff: faster motion → higher cutoff → less lag
+        
         speed  = math.hypot(self._dx, self._dy)
         cutoff = self.min_cutoff + self.beta * speed
         a      = self._alpha(cutoff)
@@ -113,9 +98,7 @@ class OneEuroFilter:
         return int(self._x_prev), int(self._y_prev)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Adaptive EMA — kept for non-cursor uses
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 class AdaptiveEMABuffer:
     def __init__(self, alpha_slow=None, alpha_fast=None, fast_threshold_px=None):
@@ -154,9 +137,7 @@ class EMABuffer(AdaptiveEMABuffer):
         super().__init__(alpha_slow=alpha or config.CURSOR_EMA_ALPHA)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Distance smoother — kills single-frame spikes in normalised distances
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 class DistanceSmoother:
     def __init__(self, alpha=None):
@@ -178,9 +159,7 @@ class DistanceSmoother:
         return self._value if self._value is not None else 1.0
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Hysteresis counter — stable mode transitions
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 class HysteresisCounter:
     """
@@ -217,9 +196,6 @@ class HysteresisCounter:
         self._counter = 0
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Legacy SmoothBuffer
-# ─────────────────────────────────────────────────────────────────────────────
 
 class SmoothBuffer:
     def __init__(self, size, ix=0, iy=0):

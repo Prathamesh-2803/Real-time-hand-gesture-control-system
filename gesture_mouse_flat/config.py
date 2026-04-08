@@ -1,94 +1,85 @@
-"""
-config.py — All tunable parameters. v3 — Full screen, smooth cursor, reliable clicks.
-
-KEY CHANGES v3:
-- MARGIN_RATIO = 0.0  → Full screen coverage, no border crop
-- BOTTOM_BIAS  = 0.0  → Full vertical range
-- One-Euro filter tuned for maximum smoothness (lower beta, lower min_cutoff)
-- Click thresholds relaxed for reliable detection
-- Dead zone reduced to 0 so cursor follows every movement
-- All gesture thresholds recalibrated
-"""
-
-# ── Camera ────────────────────────────────────────────────────────────────────
 CAMERA_INDEX             = 0
 CAMERA_WIDTH             = 1280
 CAMERA_HEIGHT            = 720
 CAMERA_FPS               = 60
 
-# ── MediaPipe ─────────────────────────────────────────────────────────────────
+
 MAX_HANDS                = 1
 MODEL_COMPLEXITY         = 1
-MIN_DETECTION_CONFIDENCE = 0.70
-MIN_TRACKING_CONFIDENCE  = 0.60
+MIN_DETECTION_CONFIDENCE = 0.75   # raised: fewer false detections
+MIN_TRACKING_CONFIDENCE  = 0.65   # raised: more stable tracking
 
-# ── Active zone — FULL SCREEN, no margins ─────────────────────────────────────
-MARGIN_RATIO = 0.0    # 0% margin = full screen coverage
-BOTTOM_BIAS  = 0.0    # 0% bottom bias = full vertical range
 
-# ── Cursor ────────────────────────────────────────────────────────────────────
-# One-Euro filter params — lower min_cutoff = smoother at rest
-# higher beta = less lag when moving fast
-CURSOR_OEF_MIN_CUTOFF  = 0.5    # Hz — lower = more smoothing at rest
-CURSOR_OEF_BETA        = 0.006  # lower = less lag at speed (sweet spot)
-CURSOR_OEF_D_CUTOFF    = 1.0    # Hz
-DEAD_ZONE              = 0      # px — set to 0: cursor follows all movement
+MARGIN_RATIO = 0.08
+BOTTOM_BIAS  = 0.0
 
-# ── Hand activation gate ──────────────────────────────────────────────────────
-HAND_ACTIVE_MARGIN       = 0.02   # index tip above wrist (normalised y) — relaxed
-HAND_ACTIVE_HYSTERESIS   = 2      # frames to activate (faster response)
-HAND_INACTIVE_HYSTERESIS = 4      # frames to deactivate
 
-# ── Click thresholds (normalised 0.0–1.0) ────────────────────────────────────
-CLICK_THRESH_NORM      = 0.065  # thumb+index tip distance to ENTER pinch
-CLICK_RELEASE_NORM     = 0.110  # must EXCEED this to exit pinch (wide gap = no flicker)
-CLICK_COOLDOWN         = 12     # frames before next click allowed
-PINCH_FRAMES           = 14     # frames — pinch held LESS than this = right-click
-                                 # pinch held MORE than this = left-click
-DOUBLE_CLICK_WINDOW    = 30     # frames between two left-clicks = double-click
-DRAG_HOLD_FRAMES       = 28     # frames holding pinch before drag starts
-DRAG_MIN_MOVE_PX       = 10     # px — drag only fires if cursor moved this far
+CURSOR_OEF_MIN_CUTOFF  = 0.8    # slightly higher = less lag when still
+CURSOR_OEF_BETA        = 0.04   # much higher = faster response on fast moves
+CURSOR_OEF_D_CUTOFF    = 1.0
+DEAD_ZONE              = 3      # px — suppresses micro-tremor noise
 
-# ── Mode-switch hysteresis ────────────────────────────────────────────────────
+
+HAND_ACTIVE_MARGIN       = 0.02
+HAND_ACTIVE_HYSTERESIS   = 2
+HAND_INACTIVE_HYSTERESIS = 4
+
+
+CLICK_THRESH_NORM      = 0.055  # pinch-in threshold (left click arm)
+CLICK_RELEASE_NORM     = 0.100  # must open this far to confirm release
+RIGHT_CLICK_THRESH     = 0.050  # tighter — right click needs a more deliberate quick pinch
+CLICK_COOLDOWN         = 15     # frames before another click can fire
+PINCH_FRAMES           = 10     # frames pinched to count as "held" (not right-click)
+DOUBLE_CLICK_WINDOW    = 28
+DRAG_HOLD_FRAMES       = 30
+DRAG_MIN_MOVE_PX       = 12
+
 MODE_HYSTERESIS_FRAMES = 3
 
-# ── Scroll (normalised) ───────────────────────────────────────────────────────
+
 SCROLL_THRESH_NORM     = 0.075
 SCROLL_EXIT_NORM       = 0.11
 SCROLL_SPEED           = 5
 SCROLL_DEAD_ZONE       = 10
 SCROLL_ANCHOR_RESET_PX = 70
 
-# ── Volume (normalised) ───────────────────────────────────────────────────────
+
 VOL_PINCH_THRESH_NORM  = 0.075
 VOL_EXIT_NORM          = 0.11
 VOL_REPEAT_DELAY       = 5
 VOL_DEAD_ZONE          = 12
 
-# ── Zoom (normalised) ─────────────────────────────────────────────────────────
-ZOOM_THRESH_NORM       = 0.30
-ZOOM_DELTA_THRESH      = 0.016
-ZOOM_COOLDOWN          = 12
 
-# ── Screenshot ────────────────────────────────────────────────────────────────
+# --- Zoom (thumb + index pinch distance) ---
+# Shape active when thumb_up + index_up only, distance > ZOOM_SHAPE_MIN_DIST
+ZOOM_SHAPE_MIN_DIST    = 0.04   # min thumb-index dist to enter zoom mode (not a pinch)
+ZOOM_SHAPE_MAX_DIST    = 0.45   # sanity cap — ignore if fingers are impossibly far
+ZOOM_DELTA_THRESH      = 0.018  # min change in normalised dist per frame to fire
+ZOOM_COOLDOWN          = 14     # frames between consecutive zoom events
+ZOOM_HIST_LEN          = 4      # smoothing history length (frames)
+
+# Legacy — kept for backwards compat, no longer used for shape detection
+ZOOM_THRESH_NORM       = 0.30
+
+
 SPREAD_THRESH          = 0.26
 SPREAD_HOLD_FRAMES     = 30
 
-# ── Media controls ────────────────────────────────────────────────────────────
+
 FIST_HOLD_FRAMES       = 20
 
-# ── Smoothing for gesture distances ───────────────────────────────────────────
+
 DIST_SMOOTH_ALPHA      = 0.40
 
-# ── HUD ───────────────────────────────────────────────────────────────────────
-HUD_ENABLED     = True
+
+HUD_ENABLED     = False
 OVERLAY_ENABLED = True
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+
 LOG_GESTURES = True
 LOG_FILE     = "gesture_log.csv"
 
-# ── Legacy EMA (kept for backward compat) ─────────────────────────────────────
+
 CURSOR_EMA_ALPHA      = 0.40
 CURSOR_EMA_ALPHA_FAST = 0.70
 CURSOR_FAST_MOVE_PX   = 60

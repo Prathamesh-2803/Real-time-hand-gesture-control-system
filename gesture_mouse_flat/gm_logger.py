@@ -1,5 +1,3 @@
-"""gm_logger.py — CSV gesture event logger."""
-
 import csv, time
 from pathlib import Path
 
