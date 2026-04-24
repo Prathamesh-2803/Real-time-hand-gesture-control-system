@@ -1,16 +1,3 @@
-"""
-CursorGesture — moves the mouse and handles clicks/drag.
-
-Key fixes:
-  - DEAD_ZONE now suppresses micro-tremor (was 0)
-  - OEF beta raised in config — cursor tracks fast hand movement properly
-  - Right-click needs stricter pinch depth (RIGHT_CLICK_THRESH) AND minimum
-    hold frames so it doesn't fire on noise
-  - MIN_PINCH_FRAMES guard ignores sub-3-frame blips entirely
-  - Pinch distance bar scaled to CLICK_RELEASE_NORM (visual matches reality)
-  - _MAX_CLICK_DRIFT: if hand drifts too far during pinch, click is suppressed
-"""
-
 import pyautogui
 import config
 from gm_helpers import OneEuroFilter, dist2d
@@ -51,7 +38,7 @@ class CursorGesture:
         self._drag_start_y   = 0.0
         self._pinch_min_dist = 1.0   # deepest pinch seen in current gesture
 
-    # ------------------------------------------------------------------
+    
     def update(self, state, active):
         self._frame += 1
         overlay = []
@@ -67,7 +54,7 @@ class CursorGesture:
             self._prev_x, self._prev_y = float(p.x), float(p.y)
             self._seeded = True
 
-        # ── Cursor movement ───────────────────────────────────────────
+        #  Cursor movement 
         cx, cy = self._oef.update(state.s8x, state.s8y)
         moved  = dist2d(cx, cy, self._prev_x, self._prev_y)
 
@@ -83,7 +70,7 @@ class CursorGesture:
 
         dist = state.pinch_2f
 
-        # ── Release detection (debounced) ─────────────────────────────
+        #  Release detection (debounced) 
         if dist > config.CLICK_RELEASE_NORM:
             self._release_frames += 1
         else:
@@ -91,7 +78,7 @@ class CursorGesture:
 
         pinch_released = (self._release_frames >= RELEASE_CONFIRM_FRAMES)
 
-        # ── State machine ─────────────────────────────────────────────
+        #  State machine 
 
         if self._state == self._ST_IDLE:
             if dist < config.CLICK_THRESH_NORM:
@@ -175,13 +162,13 @@ class CursorGesture:
                 self._pinch_frames += 1
                 overlay.append(("DRAGGING", (0, 180, 255)))
 
-        # ── Pinch distance bar ────────────────────────────────────────
+        #  Pinch distance bar 
         fill = int(max(0.0, 1.0 - dist / config.CLICK_RELEASE_NORM) * 12)
         bar  = "X" * fill + "." * (12 - fill)
         overlay.append((f"d={dist:.3f} [{bar}]", (140, 140, 140)))
         return overlay
 
-    # ------------------------------------------------------------------
+    
     def reset(self):
         self._hard_reset()
         self._seeded = False

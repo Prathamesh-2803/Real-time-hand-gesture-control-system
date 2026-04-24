@@ -82,7 +82,7 @@ class HandTracker:
         self._scroll_hyst = HysteresisCounter(enter_frames=3, exit_frames=5)
         self._zoom_hyst   = HysteresisCounter(enter_frames=3, exit_frames=4)
 
-    # ------------------------------------------------------------------
+ 
     @staticmethod
     def _finger_up(tip, pip, mcp):
         """Extended = tip above BOTH PIP and MCP joints (y-axis inverted in image)."""
@@ -95,7 +95,7 @@ class HandTracker:
         fl = _FL(); fl.x = x; fl.y = y
         return fl
 
-    # ------------------------------------------------------------------
+  
     def process(self, frame_bgr, zx0, zx1, zy0, zy1):
         s = HandState()
         h, w = frame_bgr.shape[:2]
@@ -118,7 +118,7 @@ class HandTracker:
         lm = hand.landmark
         self.last_landmarks = lm
 
-        # ── Map landmarks to screen ────────────────────────────────────
+        # Map landmarks to screen 
         def _c(idx):
             return landmark_to_screen(lm[idx], w, h, zx0, zx1, zy0, zy1,
                                       self.sw, self.sh)
@@ -129,14 +129,14 @@ class HandTracker:
         s.r16x, s.r16y, s.s16x, s.s16y = _c(16)
         s.r20x, s.r20y, s.s20x, s.s20y = _c(20)
 
-        # ── Hand size (normalisation reference) ────────────────────────
+        #  Hand size (normalisation reference) 
         s.hand_size = max(dist_lm(lm[0], lm[9]), 0.05)
 
-        # ── Activity gate ──────────────────────────────────────────────
+        #  Activity gate 
         raw_active    = (lm[0].y - lm[8].y) > config.HAND_ACTIVE_MARGIN
         s.hand_active = self._active_hyst.update(raw_active)
 
-        # ── Raw distances ──────────────────────────────────────────────
+        #  Raw distances 
         raw_pinch2 = dist_lm(lm[4], lm[8])    # thumb ↔ index
         raw_scroll = dist_lm(lm[8], lm[12])   # index ↔ middle
         raw_tpinky = dist_lm(lm[4], lm[20])   # thumb ↔ pinky (legacy)
@@ -154,7 +154,7 @@ class HandTracker:
         # but on its own smoother so zoom and cursor are independent)
         raw_zoom = raw_pinch2
 
-        # ── Smoothed distances ─────────────────────────────────────────
+        #  Smoothed distances 
         s.pinch_2f    = self._sm_pinch2.update(raw_pinch2)
         s.scroll_d    = self._sm_scroll.update(raw_scroll)
         s.pinch_3f    = self._sm_pinch3.update(raw_pinch3)
@@ -162,7 +162,7 @@ class HandTracker:
         s.spread_all  = self._sm_spread.update(raw_spread)
         s.zoom_dist   = self._sm_zoom.update(raw_zoom)
 
-        # ── Finger extension ───────────────────────────────────────────
+        #  Finger extension 
         s.thumb_up  = lm[4].y < lm[3].y
         s.index_up  = self._finger_up(lm[8],  lm[7],  lm[5])
         s.middle_up = self._finger_up(lm[12], lm[11], lm[9])
@@ -173,7 +173,7 @@ class HandTracker:
         s.palm_open      = (up_count == 4 and s.thumb_up)
         s.fingers_curled = (up_count == 0)
 
-        # ── High-level shape classification ───────────────────────────
+        #  High-level shape classification 
 
         # CURSOR: index only extended — thumb must NOT be clearly up
         # (thumb slightly bent is fine; this just prevents zoom-shape bleeds)

@@ -1,13 +1,4 @@
-"""
-Zoom gesture — Thumb + Index finger only (all other fingers curled).
 
-  Spread thumb & index apart  →  Zoom IN  (Ctrl +)
-  Bring thumb & index closer  →  Zoom OUT (Ctrl -)
-
-The distance between landmark 4 (thumb tip) and landmark 8 (index tip)
-is used directly.  A rolling history buffer smooths jitter so the
-direction is stable before a key-press fires.
-"""
 
 import pyautogui
 from collections import deque

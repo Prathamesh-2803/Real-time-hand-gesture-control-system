@@ -32,7 +32,7 @@ def _raw_mode(state):
         return "inactive"
     if state.palm_open and state.spread_all > config.SPREAD_THRESH:
         return "screenshot"
-    # Zoom: thumb + index only (zoom_shape gate already includes hysteresis)
+   
     if state.zoom_shape:
         return "zoom"
     if state.volume_mode:
